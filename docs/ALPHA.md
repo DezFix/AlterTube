@@ -1,12 +1,27 @@
-# AlterTube alpha 0.1.0 — что сделано и как проверить без Flutter
+# Статус версии и планы
 
-## Сделано
-- `app/pubspec.yaml` + `main.dart` + `app.dart` (3 таба)
-- `core/extractor` (mock с TODO под реальный extractor), `core/sponsorblock`, `core/subs`
-- `features/videos` `shorts` `subs` `player` (SponsorBlock auto-skip)
-- `backend/app.py` Flask + `requirements.txt`
-- `tools/build.py` + `tools/parse_takeout.py`
+Актуальная версия: **0.4.0 beta** (`app/pubspec.yaml`, экран «О приложении»).
 
-## Проверить сейчас (без Flutter)
-python tools/build.py check
-python -m py_compile tools/build.py tools/parse_takeout.py backend/app.py
+## Что уже работает
+
+- 4 таба: Видео (тренды + подборка под подписки), Shorts (автопрокрутка),
+  Подписки (локальные), Библиотека (история).
+- Живой поиск с историей запросов, плеер на прямых потоках (качество, скорость,
+  главы, комментарии, похожие), SponsorBlock auto-skip.
+- Импорт подписок: NewPipe / Google Takeout / CSV / список ссылок (см. `IMPORT.md`).
+- Темы: светлая / тёмная / AMOLED. Сборка в GitHub Actions, готовый APK в артефактах.
+
+## Ближайшие планы (v1)
+
+- Фонове воспроизведение и мини-плеер поверх табов.
+- Загрузки видео для офлайна.
+- Группы подписок, возврат дизлайков (ReturnDislike).
+- Автообновление экстрактора при поломках YouTube.
+
+## История (коротко)
+
+- 0.1.0 alpha — каркас на моках, проверка идеи.
+- 0.2.0 beta — реальный экстрактор, 3 таба, настройки, сборка в CI.
+- 0.3.0 — DASH-плеер, свайп-Shorts с автоплей, комментарии.
+- 0.4.0 — автопрокрутка Shorts, импорт NewPipe/CSV, персональная лента,
+  редизайн: дизайн-система, 4-й таб (Библиотека), подписка из плеера.
