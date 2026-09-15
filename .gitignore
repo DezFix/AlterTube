@@ -1,0 +1,28 @@
+# Build outputs
+build/
+.dart_tool/
+.flutter-plugins*
+.pub-cache/
+app/build/
+.gradle/
+.pub-cache/
+
+# Crash / heap dumps
+hs_err_pid*.log
+*.hprof
+
+# Screenshots for docs (keep screen1.png intentionally? no — keep, they are docs)
+# docs/*.png
+
+# Python
+__pycache__/
+.venv/
+*.pyc
+
+# Env / secrets — никогда не коммитить
+.env
+*.env
+google-services.json
+client_secret.json
+subscriptions.json
+app_subs.json

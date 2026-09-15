@@ -1,0 +1,53 @@
+name: Build debug APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: pub get
+        working-directory: app
+        run: flutter pub get
+
+      - name: Patch flutter_inappwebview_android for AGP 9
+        # Плагин использует getDefaultProguardFile('proguard-android.txt'),
+        # который AGP 9 отклоняет. См. tools/build.py::patch_pubcache.
+        run: |
+          python3 - <<'EOF'
+          import glob
+          for g in glob.glob('/home/runner/.pub-cache/hosted/pub.dev/flutter_inappwebview_android-*/android/build.gradle'):
+              t = open(g, encoding='utf-8').read()
+              f = t.replace("getDefaultProguardFile('proguard-android.txt')",
+                            "getDefaultProguardFile('proguard-android-optimize.txt')")
+              if f != t:
+                  open(g, 'w', encoding='utf-8').write(f)
+                  print('patched', g)
+          EOF
+
+      - name: analyze
+        working-directory: app
+        run: flutter analyze
+
+      - name: build debug APK (all ABIs)
+        working-directory: app
+        run: flutter build apk --debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: altertube-debug
+          path: app/build/app/outputs/flutter-apk/app-debug.apk

@@ -1,0 +1,26 @@
+name: altertube
+description: AlterTube beta - minimalist YouTube fork UI on Dart + Extractor core.
+publish_to: 'none'
+version: 0.2.0+2
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Core extractor (Android-only, wraps NewPipe Extractor Java lib)
+  # https://pub.dev/packages/newpipeextractor_dart
+  newpipeextractor_dart: ^2.0.2
+  http: ^1.2.0
+  video_player: ^2.8.0
+  shared_preferences: ^2.2.0
+  provider: ^6.1.0
+
+dev_dependencies:
+  flutter_lints: ^3.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
