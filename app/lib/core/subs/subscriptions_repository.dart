@@ -59,7 +59,6 @@ class SubscriptionsRepository {
   }
 
   /// Импорт из вставленного Takeout-JSON (тот же формат, что ест tools/parse_takeout.py).
-  /// Возвращает число добавленных каналов.
   Future<int> importTakeoutJson(String text) async {
     final data = jsonDecode(text);
     final items = data is List ? data : (data['items'] ?? []);
@@ -76,5 +75,83 @@ class SubscriptionsRepository {
       }
     }
     return n;
+  }
+
+  /// Импорт из NewPipe-экспорта:
+  /// {"app_version":"...","app_version_int":N,"subscriptions":
+  ///  [{"service_id":0,"url":"https://www.youtube.com/channel/UC...","name":"..."}]}
+  /// service_id 0 = YouTube, остальные пропускаем.
+  Future<int> importNewPipeJson(String text) async {
+    final data = jsonDecode(text);
+    final items = (data is Map ? data['subscriptions'] : data) as List? ?? [];
+    int n = 0;
+    for (final e in items) {
+      final m = e as Map;
+      if ((m['service_id'] ?? 0) != 0) continue; // только YouTube
+      final url = (m['url'] ?? '').toString().trim();
+      final name = (m['name'] ?? url).toString();
+      if (url.isEmpty) continue;
+      final id = _idFromChannelUrl(url);
+      if (id.isEmpty) continue;
+      if (!await isSub(id)) {
+        await subscribe(id, name, url);
+        n++;
+      }
+    }
+    return n;
+  }
+
+  /// Импорт из YouTube-CSV (Takeout): "Channel Id,Channel Url,Channel Title".
+  /// Также ест plain-список: по одной ссылке/UC-id/@handle на строку.
+  Future<int> importCsv(String text) async {
+    int n = 0;
+    for (var line in text.split('\n')) {
+      line = line.trim().replaceAll('\r', '');
+      if (line.isEmpty || line.startsWith('Channel Id')) continue;
+      String url = '';
+      String name = '';
+      if (line.contains(',')) {
+        final parts = line.split(',');
+        if (parts.length >= 2 && parts[1].contains('http')) {
+          url = parts[1].trim();
+          name = parts.length >= 3 ? parts.sublist(2).join(',').trim() : url;
+        }
+      }
+      url = url.isEmpty ? line : url;
+      if (!url.contains('http') && !url.startsWith('UC') && !url.startsWith('@')) {
+        continue;
+      }
+      final full = url.startsWith('http')
+          ? url
+          : url.startsWith('UC')
+              ? 'https://www.youtube.com/channel/$url'
+              : 'https://www.youtube.com/$url';
+      final id = _idFromChannelUrl(full);
+      if (id.isEmpty) continue;
+      if (!await isSub(id)) {
+        await subscribe(id, name.isEmpty ? id : name, full);
+        n++;
+      }
+    }
+    return n;
+  }
+
+  /// Умный импорт: сам определяет формат (NewPipe / Takeout / CSV / список).
+  Future<(int count, String format)> importSmart(String text) async {
+    final t = text.trim();
+    if (t.startsWith('{') && t.contains('"subscriptions"')) {
+      return (await importNewPipeJson(t), 'NewPipe');
+    }
+    if (t.startsWith('[') || t.contains('"snippet"') || t.contains('"kind"')) {
+      return (await importTakeoutJson(t), 'Takeout');
+    }
+    return (await importCsv(t), 'CSV/список');
+  }
+
+  static String _idFromChannelUrl(String url) {
+    final m = RegExp(r'youtube\.com/(?:channel/|@|c/|user/)([\w@.-]+)').firstMatch(url);
+    if (m != null) return m.group(1)!;
+    if (RegExp(r'^UC[\w-]{10,}$').hasMatch(url)) return url;
+    return '';
   }
 }

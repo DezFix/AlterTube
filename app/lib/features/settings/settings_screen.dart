@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/history/history_repository.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/extractor/extractor_service.dart';
 import '../../core/subs/subscriptions_repository.dart';
@@ -46,6 +47,22 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
           ),
+          const _Header('Лента и Shorts'),
+          SwitchListTile(
+            title: const Text('Лента под подписки'),
+            subtitle: const Text('Видео подстраиваются под подписки и просмотры'),
+            value: s.personalizedFeed,
+            onChanged: (v) =>
+                context.read<AppSettings>().setPersonalizedFeed(v),
+          ),
+          SwitchListTile(
+            title: const Text('Автопрокрутка Shorts'),
+            subtitle:
+                const Text('Следующий шортс включается сам по завершению'),
+            value: s.shortsAutoplay,
+            onChanged: (v) =>
+                context.read<AppSettings>().setShortsAutoplay(v),
+          ),
           const _Header('SponsorBlock'),
           SwitchListTile(
             title: const Text('Пропускать сегменты'),
@@ -86,6 +103,18 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.history_toggle_off),
+            title: const Text('Очистить историю и индекс'),
+            subtitle: const Text('Сбросит подборку ленты под тебя'),
+            onTap: () async {
+              await HistoryRepository().clear();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('История очищена')));
+              }
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.restart_alt),
             title: const Text('Сбросить настройки'),
             onTap: () => context.read<AppSettings>().resetAll(),
@@ -94,7 +123,7 @@ class SettingsScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
-              'AlterTube 0.2.0 beta, GPL-3.0.\n'
+              'AlterTube 0.4.0 beta, GPL-3.0.\n'
               'Ядро извлечения: NewPipe Extractor (TeamNewPipe) через newpipeextractor_dart.\n'
               'Пропуск сегментов: SponsorBlock. Без Google-входа и без официальной рекламы.',
             ),

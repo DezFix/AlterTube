@@ -59,6 +59,7 @@ class StreamOption {
 class ResolvedStream {
   final String title;
   final String uploader;
+  final String uploaderUrl;
   final String streamUrl;
   final String resolution;
   final int? views;
@@ -70,6 +71,7 @@ class ResolvedStream {
   const ResolvedStream({
     required this.title,
     required this.uploader,
+    this.uploaderUrl = '',
     required this.streamUrl,
     required this.resolution,
     required this.muxed,
@@ -266,6 +268,7 @@ class ExtractorService {
       return ResolvedStream(
         title: info.name ?? '',
         uploader: info.uploaderName ?? '',
+        uploaderUrl: info.uploaderUrl ?? '',
         streamUrl: pickUrl,
         resolution: pickRes.isNotEmpty ? pickRes : (dash != null ? 'DASH' : 'LIVE'),
         views: info.viewCount,

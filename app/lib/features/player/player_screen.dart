@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import '../../core/extractor/extractor_service.dart';
+import '../../core/history/history_repository.dart';
 import '../../core/sponsorblock/sponsorblock_service.dart';
 import '../../core/settings/app_settings.dart';
 
@@ -66,6 +67,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         loading = false;
       });
       await p.open(Media(r.streamUrl), play: true);
+      // История для индексации ленты (fire-and-forget)
+      HistoryRepository().recordWatch(idFromUrl(widget.videoUrl), r.uploaderUrl);
       // Похожие + главы + комменты фоном
       ExtractorService().related(widget.videoUrl).then((v) {
         if (mounted) setState(() => related = v);
@@ -129,6 +132,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       res = ResolvedStream(
         title: res!.title,
         uploader: res!.uploader,
+        uploaderUrl: res!.uploaderUrl,
         streamUrl: q.url,
         resolution: q.label,
         views: res!.views,

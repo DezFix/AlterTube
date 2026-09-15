@@ -21,6 +21,8 @@ class AppSettings extends ChangeNotifier {
   Set<String> sbCategories = {'sponsor', 'selfpromo', 'intro', 'outro', 'interaction'};
   String backendUrl = ''; // напр. http://192.168.1.5:5000 — иначе напрямую к sponsor.ajay.app
   String region = 'auto';
+  bool shortsAutoplay = true; // автопрокрутка Shorts к следующему по завершению
+  bool personalizedFeed = true; // лента Видео подстраивается под подписки и просмотры
 
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();
@@ -29,6 +31,8 @@ class AppSettings extends ChangeNotifier {
     sbCategories = (p.getStringList('sbCategories') ?? sbCategories.toList()).toSet();
     backendUrl = p.getString('backendUrl') ?? '';
     region = p.getString('region') ?? 'auto';
+    shortsAutoplay = p.getBool('shortsAutoplay') ?? true;
+    personalizedFeed = p.getBool('personalizedFeed') ?? true;
     notifyListeners();
   }
 
@@ -39,6 +43,8 @@ class AppSettings extends ChangeNotifier {
     await p.setStringList('sbCategories', sbCategories.toList());
     await p.setString('backendUrl', backendUrl);
     await p.setString('region', region);
+    await p.setBool('shortsAutoplay', shortsAutoplay);
+    await p.setBool('personalizedFeed', personalizedFeed);
   }
 
   Future<void> setTheme(ThemeMode m) async {
@@ -75,12 +81,26 @@ class AppSettings extends ChangeNotifier {
     await _save();
   }
 
+  Future<void> setShortsAutoplay(bool v) async {
+    shortsAutoplay = v;
+    notifyListeners();
+    await _save();
+  }
+
+  Future<void> setPersonalizedFeed(bool v) async {
+    personalizedFeed = v;
+    notifyListeners();
+    await _save();
+  }
+
   Future<void> resetAll() async {
     themeMode = ThemeMode.system;
     sbEnabled = true;
     sbCategories = {'sponsor', 'selfpromo', 'intro', 'outro', 'interaction'};
     backendUrl = '';
     region = 'auto';
+    shortsAutoplay = true;
+    personalizedFeed = true;
     notifyListeners();
     await _save();
   }

@@ -68,11 +68,11 @@ class _SubsTabState extends State<SubsTab> {
               TextField(
                 controller: ctl,
                 decoration: const InputDecoration(
-                  labelText: 'Ссылка, UC-id, @handle или название',
-                  hintText: 'https://www.youtube.com/@...',
+                  labelText: 'Ссылка, UC-id, @handle, название — или вставка файла',
+                  hintText: 'https://www.youtube.com/@...\n+ NewPipe/Takeout/CSV, см. docs/IMPORT.md',
                 ),
                 minLines: 1,
-                maxLines: 4,
+                maxLines: 6,
               ),
               if (err != null) ...[
                 const SizedBox(height: 8),
@@ -93,11 +93,14 @@ class _SubsTabState extends State<SubsTab> {
                       });
                       try {
                         final text = ctl.text.trim();
-                        if (text.startsWith('[') || text.startsWith('{')) {
-                          final n = await repo.importTakeoutJson(text);
+                        if (text.startsWith('[') ||
+                            text.startsWith('{') ||
+                            text.contains('http') && text.contains('\n') ||
+                            text.startsWith('Channel Id')) {
+                          final (count, format) = await repo.importSmart(text);
                           dialogNav.pop();
-                          messenger.showSnackBar(
-                              SnackBar(content: Text('Импортировано: $n')));
+                          messenger.showSnackBar(SnackBar(
+                              content: Text('Импортировано ($format): $count')));
                           _reload();
                           return;
                         }

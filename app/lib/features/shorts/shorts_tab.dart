@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:provider/provider.dart';
 import '../../core/extractor/extractor_service.dart';
+import '../../core/settings/app_settings.dart';
 import '../player/player_screen.dart';
 
 // Доделанные Shorts: вертикальный PageView, текущее видео играет само,
+// по завершении — автопрокрутка к следующему (тумблер в настройках),
 // соседние предзагружаются (PageView держит ±1), остальные на паузе.
 // Тап — пауза/плей, иконка — mute, снизу прогресс.
 
@@ -16,6 +20,7 @@ class ShortsTab extends StatefulWidget {
 
 class _ShortsTabState extends State<ShortsTab> {
   final ext = ExtractorService();
+  final PageController pager = PageController();
   List<VideoItem>? items;
   String? error;
   int current = 0;
@@ -27,6 +32,12 @@ class _ShortsTabState extends State<ShortsTab> {
     _load();
   }
 
+  @override
+  void dispose() {
+    pager.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     try {
       final list = await ext.shortsFeed();
@@ -34,6 +45,13 @@ class _ShortsTabState extends State<ShortsTab> {
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
     }
+  }
+
+  void _next() {
+    final list = items;
+    if (list == null || current + 1 >= list.length) return;
+    pager.nextPage(
+        duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
   }
 
   @override
@@ -63,6 +81,7 @@ class _ShortsTabState extends State<ShortsTab> {
     return Stack(
       children: [
         PageView.builder(
+          controller: pager,
           scrollDirection: Axis.vertical,
           itemCount: items!.length,
           onPageChanged: (i) => setState(() => current = i),
@@ -71,6 +90,7 @@ class _ShortsTabState extends State<ShortsTab> {
             video: items![i],
             active: i == current,
             muted: muted,
+            onCompleted: _next,
           ),
         ),
         Positioned(
@@ -91,8 +111,13 @@ class _ShortsPage extends StatefulWidget {
   final VideoItem video;
   final bool active;
   final bool muted;
+  final VoidCallback onCompleted;
   const _ShortsPage(
-      {super.key, required this.video, required this.active, required this.muted});
+      {super.key,
+      required this.video,
+      required this.active,
+      required this.muted,
+      required this.onCompleted});
 
   @override
   State<_ShortsPage> createState() => _ShortsPageState();
@@ -101,6 +126,7 @@ class _ShortsPage extends StatefulWidget {
 class _ShortsPageState extends State<_ShortsPage> {
   Player? player;
   VideoController? vctl;
+  StreamSubscription<bool>? _doneSub;
   String? error;
   bool paused = false;
 
@@ -142,6 +168,12 @@ class _ShortsPageState extends State<_ShortsPage> {
         vctl = vc;
       });
       await p.setVolume(widget.muted ? 0 : 100);
+      _doneSub = p.stream.completed.listen((done) {
+        if (!done || !mounted) return;
+        if (!widget.active) return;
+        if (!context.read<AppSettings>().shortsAutoplay) return;
+        widget.onCompleted();
+      });
       await p.open(Media(r.streamUrl), play: widget.active);
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
@@ -150,6 +182,7 @@ class _ShortsPageState extends State<_ShortsPage> {
 
   @override
   void dispose() {
+    _doneSub?.cancel();
     player?.dispose();
     super.dispose();
   }
