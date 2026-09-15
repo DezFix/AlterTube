@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/settings/app_settings.dart';
+import 'core/theme/app_theme.dart';
 import 'features/videos/videos_tab.dart';
 import 'features/shorts/shorts_tab.dart';
 import 'features/subs/subs_tab.dart';
+import 'features/library/library_tab.dart';
 import 'features/search/tube_search.dart';
 import 'features/settings/settings_screen.dart';
 import 'core/extractor/extractor_service.dart';
@@ -17,12 +19,8 @@ class AlterTubeApp extends StatelessWidget {
     return MaterialApp(
       title: 'AlterTube',
       themeMode: theme.themeMode,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.red),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.red,
-        brightness: Brightness.dark,
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(amoled: theme.amoled),
       home: const HomeShell(),
     );
   }
@@ -49,7 +47,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AlterTube beta'),
+        title: const Text('AlterTube'),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -69,7 +67,7 @@ class _HomeShellState extends State<HomeShell> {
                 showAboutDialog(
                   context: context,
                   applicationName: 'AlterTube',
-                  applicationVersion: '0.2.0 beta',
+                  applicationVersion: '0.4.0 beta',
                   applicationLegalese: 'GPL-3.0. Форк-подход: NewPipe/PipePipe + SponsorBlock.',
                 );
               }
@@ -83,7 +81,7 @@ class _HomeShellState extends State<HomeShell> {
       ),
       body: IndexedStack(
         index: index,
-        children: const [VideosTab(), ShortsTab(), SubsTab()],
+        children: const [VideosTab(), ShortsTab(), SubsTab(), LibraryTab()],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
@@ -99,6 +97,10 @@ class _HomeShellState extends State<HomeShell> {
               icon: Icon(Icons.subscriptions_outlined),
               selectedIcon: Icon(Icons.subscriptions),
               label: 'Подписки'),
+          NavigationDestination(
+              icon: Icon(Icons.video_library_outlined),
+              selectedIcon: Icon(Icons.video_library),
+              label: 'Библиотека'),
         ],
       ),
     );

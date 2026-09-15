@@ -7,6 +7,9 @@ import '../../core/extractor/extractor_service.dart';
 import '../../core/history/history_repository.dart';
 import '../../core/sponsorblock/sponsorblock_service.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/subs/subscriptions_repository.dart';
+import '../../core/widgets/app_states.dart';
+import '../../core/widgets/channel_avatar.dart';
 
 // Нормальный плеер на ExoPlayer (media_kit): прямые потоки, DASH и HLS,
 // fullscreen/скорость/качество, главы, комменты, похожие, SponsorBlock.
@@ -36,6 +39,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool commentsLoading = false;
   bool commentsDone = false;
   double rate = 1.0;
+  bool isSub = false;
+  bool subBusy = false;
 
   @override
   void initState() {
@@ -67,8 +72,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
         loading = false;
       });
       await p.open(Media(r.streamUrl), play: true);
+      await p.setRate(rate);
       // История для индексации ленты (fire-and-forget)
       HistoryRepository().recordWatch(idFromUrl(widget.videoUrl), r.uploaderUrl);
+      // Статус подписки
+      _refreshSub(r.uploaderUrl);
       // Похожие + главы + комменты фоном
       ExtractorService().related(widget.videoUrl).then((v) {
         if (mounted) setState(() => related = v);
@@ -104,30 +112,81 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
   }
 
+  Future<void> _refreshSub(String channelUrl) async {
+    if (channelUrl.isEmpty) return;
+    try {
+      final ch = await ExtractorService().resolveChannel(channelUrl);
+      if (!mounted || ch.id.isEmpty) return;
+      final sub = await SubscriptionsRepository().isSub(ch.id);
+      if (mounted) setState(() => isSub = sub);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleSub() async {
+    final r = res;
+    if (r == null || r.uploaderUrl.isEmpty || subBusy) return;
+    setState(() => subBusy = true);
+    try {
+      final ch = await ExtractorService().resolveChannel(r.uploaderUrl);
+      if (ch.id.isEmpty) throw ExtractorFailure('Канал не распознан');
+      final repo = SubscriptionsRepository();
+      if (isSub) {
+        await repo.unsubscribe(ch.id);
+      } else {
+        await repo.subscribe(ch.id, ch.name.isEmpty ? r.uploader : ch.name, ch.url);
+      }
+      if (mounted) {
+        setState(() {
+          isSub = !isSub;
+          subBusy = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(isSub ? 'Подписался: ${ch.name}' : 'Отписался')));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => subBusy = false);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Не вышло: $e')));
+      }
+    }
+  }
+
   Future<void> _loadComments() async {
     if (commentsLoading || commentsDone) return;
     setState(() => commentsLoading = true);
-    final first = comments.isEmpty;
-    final list = first
-        ? await ExtractorService().comments(widget.videoUrl)
-        : await ExtractorService().moreComments();
-    if (!mounted) return;
-    setState(() {
-      commentsLoading = false;
-      if (list.isEmpty) {
-        commentsDone = true;
-      } else {
-        comments.addAll(list);
-      }
-    });
+    try {
+      final first = comments.isEmpty;
+      final list = first
+          ? await ExtractorService().comments(widget.videoUrl)
+          : await ExtractorService().moreComments();
+      if (!mounted) return;
+      setState(() {
+        commentsLoading = false;
+        if (list.isEmpty) {
+          commentsDone = true;
+        } else {
+          comments.addAll(list);
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => commentsLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Комменты не загрузились: $e')),
+      );
+    }
   }
 
   Future<void> _switchQuality(StreamOption q) async {
     final p = player;
     if (p == null || res == null) return;
     final pos = await p.stream.position.first;
+    final wasPlaying = await p.stream.playing.first;
     await p.open(Media(q.url), play: true);
     await p.seek(pos);
+    await p.setRate(rate);
+    if (!wasPlaying) await p.pause();
     setState(() {
       res = ResolvedStream(
         title: res!.title,
@@ -164,26 +223,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        FilledButton(
-                            onPressed: () {
-                              setState(() {
-                                loading = true;
-                                error = null;
-                              });
-                              _init();
-                            },
-                            child: const Text('Повторить')),
-                      ],
-                    ),
-                  ),
+              ? AppErrorView(
+                  message: error!,
+                  onRetry: () {
+                    setState(() {
+                      loading = true;
+                      error = null;
+                    });
+                    _init();
+                  },
                 )
               : ListView(
                   children: [
@@ -198,18 +246,77 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                              child: Text(info,
-                                  style: Theme.of(context).textTheme.bodySmall)),
-                          if (segs.isNotEmpty)
-                            Text('SB: ${segs.length}',
-                                style: Theme.of(context).textTheme.bodySmall),
-                        ],
-                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: Text(widget.title,
+                          style: Theme.of(context).textTheme.titleMedium),
                     ),
+                    // Канал + подписка
+                    if (res != null)
+                      Padding(
+                        padding:
+                            const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: Row(
+                          children: [
+                            ChannelAvatar(name: res!.uploader),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(res!.uploader,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium),
+                                  Text(info,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton.tonal(
+                              onPressed:
+                                  subBusy ? null : _toggleSub,
+                              child: Text(isSub
+                                  ? 'Вы подписаны'
+                                  : 'Подписаться'),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding:
+                            const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                                child: Text(info,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall)),
+                            if (segs.isNotEmpty)
+                              Text('SB: ${segs.length}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall),
+                          ],
+                        ),
+                      ),
+                    if (res != null && segs.isNotEmpty)
+                      Padding(
+                        padding:
+                            const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                        child: Text('SB: пропущено сегментов: ${segs.length}',
+                            style:
+                                Theme.of(context).textTheme.bodySmall),
+                      ),
                     // Качество + скорость
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),

@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Локальные подписки без Google-входа (как NewPipe/PipePipe).
-// Формат записи: channelId|name|channelUrl (url может быть пустым у старых записей).
+// Новый формат: base64url(json([id, name, url])) — переживает '|' и ',' в названиях.
+// Старый 'id|name|url' читается для совместимости и мигрирует при записи.
 
 class Sub {
   final String id;
@@ -13,12 +14,43 @@ class Sub {
   String get channelUrl =>
       url.isNotEmpty ? url : 'https://www.youtube.com/channel/$id';
 
-  String encode() => '$id|$name|$url';
+  String encode() {
+    final raw = jsonEncode([id, name, url]);
+    return 'j:${base64Url.encode(utf8.encode(raw))}';
+  }
 
   static Sub? decode(String raw) {
-    final p = raw.split('|');
-    if (p.isEmpty || p.first.isEmpty) return null;
-    return Sub(id: p[0], name: p.length > 1 ? p[1] : p[0], url: p.length > 2 ? p[2] : '');
+    if (raw.startsWith('j:')) {
+      try {
+        final parts = jsonDecode(
+            utf8.decode(base64Url.decode(raw.substring(2)))) as List;
+        final id = parts.isNotEmpty ? '${parts[0]}' : '';
+        if (id.isEmpty) return null;
+        return Sub(
+          id: id,
+          name: parts.length > 1 ? '${parts[1]}' : id,
+          url: parts.length > 2 ? '${parts[2]}' : '',
+        );
+      } catch (_) {
+        return null;
+      }
+    }
+    // Legacy 'id|name|url': id до первого '|', url — последний сегмент,
+    // всё между — имя (в нём мог быть '|').
+    final first = raw.indexOf('|');
+    if (first <= 0) return null;
+    final last = raw.lastIndexOf('|');
+    if (last == first) {
+      return Sub(
+          id: raw.substring(0, first),
+          name: raw.substring(first + 1),
+          url: '');
+    }
+    return Sub(
+      id: raw.substring(0, first),
+      name: raw.substring(first + 1, last),
+      url: raw.substring(last + 1),
+    );
   }
 }
 
@@ -41,7 +73,10 @@ class SubscriptionsRepository {
   Future<void> subscribe(String channelId, String name, String url) async {
     final p = await SharedPreferences.getInstance();
     final cur = (p.getStringList(_k) ?? [])
-        .where((e) => !e.startsWith('$channelId|'))
+        .map(Sub.decode)
+        .whereType<Sub>()
+        .where((e) => e.id != channelId)
+        .map((e) => e.encode())
         .toList()
       ..add(Sub(id: channelId, name: name, url: url).encode());
     await p.setStringList(_k, cur);
@@ -49,7 +84,12 @@ class SubscriptionsRepository {
 
   Future<void> unsubscribe(String channelId) async {
     final p = await SharedPreferences.getInstance();
-    final cur = (p.getStringList(_k) ?? []).where((e) => !e.startsWith('$channelId|')).toList();
+    final cur = (p.getStringList(_k) ?? [])
+        .map(Sub.decode)
+        .whereType<Sub>()
+        .where((e) => e.id != channelId)
+        .map((e) => e.encode())
+        .toList();
     await p.setStringList(_k, cur);
   }
 
@@ -103,6 +143,7 @@ class SubscriptionsRepository {
 
   /// Импорт из YouTube-CSV (Takeout): "Channel Id,Channel Url,Channel Title".
   /// Также ест plain-список: по одной ссылке/UC-id/@handle на строку.
+  /// CSV разбирается с учётом кавычек: "UC...,https://...,\"Name, with comma\"".
   Future<int> importCsv(String text) async {
     int n = 0;
     for (var line in text.split('\n')) {
@@ -111,7 +152,7 @@ class SubscriptionsRepository {
       String url = '';
       String name = '';
       if (line.contains(',')) {
-        final parts = line.split(',');
+        final parts = _splitCsv(line);
         if (parts.length >= 2 && parts[1].contains('http')) {
           url = parts[1].trim();
           name = parts.length >= 3 ? parts.sublist(2).join(',').trim() : url;
@@ -153,5 +194,36 @@ class SubscriptionsRepository {
     if (m != null) return m.group(1)!;
     if (RegExp(r'^UC[\w-]{10,}$').hasMatch(url)) return url;
     return '';
+  }
+
+  /// Мини CSV-сплиттер с поддержкой "..." (удвоенные кавычки = одна кавычка).
+  static List<String> _splitCsv(String line) {
+    final out = <String>[];
+    final buf = StringBuffer();
+    var inQuotes = false;
+    for (var i = 0; i < line.length; i++) {
+      final ch = line[i];
+      if (ch == '"') {
+        if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
+          buf.write('"');
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch == ',' && !inQuotes) {
+        out.add(buf.toString());
+        buf.clear();
+      } else {
+        buf.write(ch);
+      }
+    }
+    out.add(buf.toString());
+    return out.map((e) {
+      var s = e.trim();
+      if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
+        s = s.substring(1, s.length - 1).replaceAll('""', '"');
+      }
+      return s;
+    }).toList();
   }
 }

@@ -31,6 +31,13 @@ class SettingsScreen extends StatelessWidget {
                   context.read<AppSettings>().setTheme(v.first),
             ),
           ),
+          SwitchListTile(
+            title: const Text('AMOLED-чёрный'),
+            subtitle: const Text('Чисто чёрный фон в тёмной теме'),
+            value: s.amoled,
+            onChanged: (v) =>
+                context.read<AppSettings>().setAmoled(v),
+          ),
           const _Header('Контент'),
           ListTile(
             title: const Text('Регион'),
@@ -87,7 +94,9 @@ class SettingsScreen extends StatelessWidget {
                 hintText: 'http://192.168.1.5:5000',
                 helperText: 'Пусто = запросы идут напрямую к sponsor.ajay.app',
               ),
-              onFieldSubmitted: (v) => context.read<AppSettings>().setBackend(v),
+              onChanged: (v) => context.read<AppSettings>().setBackend(v),
+              onFieldSubmitted: (v) =>
+                  context.read<AppSettings>().setBackend(v),
             ),
           ),
           const _Header('Данные'),

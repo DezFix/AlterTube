@@ -5,6 +5,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
 import '../../core/extractor/extractor_service.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/widgets/app_states.dart';
 import '../player/player_screen.dart';
 
 // Доделанные Shorts: вертикальный PageView, текущее видео играет само,
@@ -57,27 +58,40 @@ class _ShortsTabState extends State<ShortsTab> {
   @override
   Widget build(BuildContext context) {
     if (error != null) {
+      return AppErrorView(
+        message: error!,
+        onRetry: () {
+          setState(() => error = null);
+          _load();
+        },
+      );
+    }
+    if (items == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (items!.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(error!, textAlign: TextAlign.center),
+              Icon(Icons.bolt_outlined,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.outline),
               const SizedBox(height: 12),
-              FilledButton(
-                  onPressed: () {
-                    setState(() => error = null);
-                    _load();
-                  },
-                  child: const Text('Повторить')),
+              const Text('Shorts не нашлись. Попробуй обновить.',
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              FilledButton.tonal(
+                onPressed: _load,
+                child: const Text('Обновить'),
+              ),
             ],
           ),
         ),
       );
     }
-    if (items == null) return const Center(child: CircularProgressIndicator());
-    if (items!.isEmpty) return const Center(child: Text('Shorts не нашлись'));
     return Stack(
       children: [
         PageView.builder(
@@ -259,9 +273,25 @@ class _ShortsPageState extends State<_ShortsPage> {
                 const SizedBox(height: 4),
                 Text(v.channel,
                     style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 2),
-                const Text('Двойной тап — открыть как видео',
-                    style: TextStyle(color: Colors.white38, fontSize: 11)),
+              ],
+            ),
+          ),
+          // Правая панель действий
+          Positioned(
+            right: 8,
+            bottom: 56,
+            child: Column(
+              children: [
+                IconButton.filledTonal(
+                  tooltip: 'Открыть как видео',
+                  icon: const Icon(Icons.open_in_full),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => PlayerScreen(
+                            videoUrl: v.url, title: v.title)),
+                  ),
+                ),
               ],
             ),
           ),

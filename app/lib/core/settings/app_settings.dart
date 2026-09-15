@@ -17,6 +17,7 @@ class AppSettings extends ChangeNotifier {
   static const regions = ['auto', 'RU', 'UA', 'US', 'DE'];
 
   ThemeMode themeMode = ThemeMode.system;
+  bool amoled = false; // true = чисто чёрный фон в тёмной теме
   bool sbEnabled = true;
   Set<String> sbCategories = {'sponsor', 'selfpromo', 'intro', 'outro', 'interaction'};
   String backendUrl = ''; // напр. http://192.168.1.5:5000 — иначе напрямую к sponsor.ajay.app
@@ -27,6 +28,7 @@ class AppSettings extends ChangeNotifier {
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();
     themeMode = ThemeMode.values[p.getInt('themeMode') ?? ThemeMode.system.index];
+    amoled = p.getBool('amoled') ?? false;
     sbEnabled = p.getBool('sbEnabled') ?? true;
     sbCategories = (p.getStringList('sbCategories') ?? sbCategories.toList()).toSet();
     backendUrl = p.getString('backendUrl') ?? '';
@@ -39,6 +41,7 @@ class AppSettings extends ChangeNotifier {
   Future<void> _save() async {
     final p = await SharedPreferences.getInstance();
     await p.setInt('themeMode', themeMode.index);
+    await p.setBool('amoled', amoled);
     await p.setBool('sbEnabled', sbEnabled);
     await p.setStringList('sbCategories', sbCategories.toList());
     await p.setString('backendUrl', backendUrl);
@@ -49,6 +52,12 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setTheme(ThemeMode m) async {
     themeMode = m;
+    notifyListeners();
+    await _save();
+  }
+
+  Future<void> setAmoled(bool v) async {
+    amoled = v;
     notifyListeners();
     await _save();
   }
@@ -95,6 +104,7 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> resetAll() async {
     themeMode = ThemeMode.system;
+    amoled = false;
     sbEnabled = true;
     sbCategories = {'sponsor', 'selfpromo', 'intro', 'outro', 'interaction'};
     backendUrl = '';
