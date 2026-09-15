@@ -50,6 +50,21 @@ class _VideosTabState extends State<VideosTab> {
     if (mounted) setState(() => moreLoading = false);
   }
 
+  String _sub(VideoItem v) {
+    final parts = <String>[v.channel];
+    if (v.views != null) parts.add(fmtViews(v.views));
+    if (v.date.isNotEmpty) parts.add(v.date);
+    return parts.join(' • ');
+  }
+
+  Widget _avatar(VideoItem v) => v.avatar.isEmpty
+      ? const CircleAvatar(child: Icon(Icons.person))
+      : CircleAvatar(
+          backgroundImage: NetworkImage(v.avatar),
+          onBackgroundImageError: (_, __) {},
+          child: const Icon(Icons.person),
+        );
+
   @override
   Widget build(BuildContext context) {
     if (loading) return const Center(child: CircularProgressIndicator());
@@ -75,13 +90,7 @@ class _VideosTabState extends State<VideosTab> {
         itemBuilder: (_, i) {
           if (i == items.length) {
             if (next == null) return const SizedBox(height: 24);
-            if (!moreLoading) {
-              _more();
-              return const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
+            if (!moreLoading) _more();
             return const Padding(
               padding: EdgeInsets.all(16),
               child: Center(child: CircularProgressIndicator()),
@@ -126,10 +135,9 @@ class _VideosTabState extends State<VideosTab> {
                     ),
                   ),
                   ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.person)),
+                    leading: _avatar(v),
                     title: Text(v.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-                    subtitle: Text(
-                        '${v.channel}${v.views != null ? ' • ${fmtViews(v.views)}' : ''}'),
+                    subtitle: Text(_sub(v)),
                   ),
                 ],
               ),

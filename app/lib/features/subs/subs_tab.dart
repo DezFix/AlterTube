@@ -204,7 +204,7 @@ class _SubsTabState extends State<SubsTab> {
                                 title: Text(v.title,
                                     maxLines: 2, overflow: TextOverflow.ellipsis),
                                 subtitle: Text(
-                                    '${v.channel}${v.views != null ? ' • ${fmtViews(v.views)}' : ''}'),
+                                    '${v.channel}${v.views != null ? ' • ${fmtViews(v.views)}' : ''}${v.date.isNotEmpty ? ' • ${v.date}' : ''}'),
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(

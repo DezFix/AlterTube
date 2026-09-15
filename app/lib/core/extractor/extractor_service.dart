@@ -15,7 +15,9 @@ String _msg(Object e) {
   if (s.contains('429') || s.toLowerCase().contains('rate')) {
     return 'YouTube ограничил запросы (429). Подожди минуту и обнови.';
   }
-  if (s.toLowerCase().contains('network') || s.toLowerCase().contains('socket') || s.toLowerCase().contains('host')) {
+  if (s.toLowerCase().contains('network') ||
+      s.toLowerCase().contains('socket') ||
+      s.toLowerCase().contains('host')) {
     return 'Нет сети. Проверь интернет в эмуляторе.';
   }
   return 'Экстрактор сломался (YouTube что-то поменял): $s';
@@ -28,6 +30,8 @@ class VideoItem {
   final String channel;
   final String channelUrl;
   final String thumb;
+  final String avatar;
+  final String date;
   final bool isShort;
   final int? duration;
   final int? views;
@@ -38,10 +42,18 @@ class VideoItem {
     required this.channel,
     required this.channelUrl,
     required this.thumb,
+    this.avatar = '',
+    this.date = '',
     this.isShort = false,
     this.duration,
     this.views,
   });
+}
+
+class StreamOption {
+  final String label;
+  final String url;
+  const StreamOption({required this.label, required this.url});
 }
 
 class ResolvedStream {
@@ -51,13 +63,42 @@ class ResolvedStream {
   final String resolution;
   final int? views;
   final int? duration;
+  final List<StreamOption> muxed;
+  final String? dashUrl;
+  final String? hlsUrl;
+  final bool isLive;
   const ResolvedStream({
     required this.title,
     required this.uploader,
     required this.streamUrl,
     required this.resolution,
+    required this.muxed,
     this.views,
     this.duration,
+    this.dashUrl,
+    this.hlsUrl,
+    this.isLive = false,
+  });
+}
+
+class Chapter {
+  final String title;
+  final int start;
+  const Chapter({required this.title, required this.start});
+}
+
+class YtComment {
+  final String author;
+  final String text;
+  final int likes;
+  final String avatar;
+  final int replies;
+  const YtComment({
+    required this.author,
+    required this.text,
+    required this.likes,
+    required this.avatar,
+    required this.replies,
   });
 }
 
@@ -96,13 +137,17 @@ class ExtractorService {
       .map((e) {
         final url = e.url ?? '';
         final id = (e.id?.isNotEmpty == true) ? e.id! : idFromUrl(url);
+        final thumbs = e.thumbnails;
+        final avatars = e.uploaderAvatars;
         return VideoItem(
           id: id,
           url: url.isEmpty ? watchUrl(id) : url,
           title: (e.name?.isNotEmpty == true) ? e.name! : 'Без названия',
           channel: e.uploaderName ?? '',
           channelUrl: e.uploaderUrl ?? '',
-          thumb: e.thumbnails.isNotEmpty ? e.thumbnails.last : '',
+          thumb: thumbs.isNotEmpty ? thumbs.last : '',
+          avatar: avatars.isNotEmpty ? avatars.last : '',
+          date: e.uploadDate ?? '',
           isShort: e.isShort,
           duration: e.duration,
           views: e.viewCount,
@@ -112,12 +157,8 @@ class ExtractorService {
       .toList();
 
   Future<List<VideoItem>> trending() async {
-    try {
-      final page = await TrendingExtractor.getTrendingVideos();
-      return _map(page.items).where((v) => !v.isShort).toList();
-    } catch (e) {
-      throw ExtractorFailure(_msg(e));
-    }
+    final p = await trendingPage(null);
+    return p.items;
   }
 
   Future<({List<VideoItem> items, dynamic next})> trendingPage(dynamic next) async {
@@ -163,39 +204,59 @@ class ExtractorService {
     }
   }
 
-  /// Прямой муксированный mp4-поток для video_player.
+  /// Потоки для media_kit: сначала муксированный mp4, иначе DASH, иначе HLS (live).
   Future<ResolvedStream> resolveStream(String videoUrl) async {
     try {
       final v = await VideoExtractor.getStream(videoUrl);
       final info = v.videoInfo;
-      final muxed = v.videoStreams;
-      if (muxed.isEmpty) {
-        throw ExtractorFailure('Нет прямого потока (live/DASH beta не умеет)');
-      }
-      VideoStream? pick;
-      final mp4 = muxed.where((s) =>
-          (s.formatSuffix?.toLowerCase().contains('mp4') ?? false) ||
-          (s.formatMimeType?.toLowerCase().contains('mp4') ?? false)).toList();
+      final muxed = v.videoStreams
+          .where((s) => (s.url?.isNotEmpty ?? false))
+          .map((s) => StreamOption(label: s.resolution ?? '?', url: s.url!))
+          .toList();
+      // Предпочитаем mp4
+      final mp4 = v.videoStreams
+          .where((s) =>
+              (s.url?.isNotEmpty ?? false) &&
+              ((s.formatSuffix?.toLowerCase().contains('mp4') ?? false) ||
+                  (s.formatMimeType?.toLowerCase().contains('mp4') ?? false)))
+          .map((s) => StreamOption(label: s.resolution ?? '?', url: s.url!))
+          .toList();
       final pool = mp4.isNotEmpty ? mp4 : muxed;
+      String? pickUrl;
+      String pickRes = '';
       for (final want in ['720', '480', '360']) {
         for (final s in pool) {
-          if ((s.resolution ?? '').contains(want)) {
-            pick = s;
+          if (s.label.contains(want)) {
+            pickUrl = s.url;
+            pickRes = s.label;
             break;
           }
         }
-        if (pick != null) break;
+        if (pickUrl != null) break;
       }
-      pick ??= pool.first;
-      final url = pick.url;
-      if (url == null || url.isEmpty) throw ExtractorFailure('Поток без URL');
+      if (pickUrl == null && pool.isNotEmpty) {
+        pickUrl = pool.first.url;
+        pickRes = pool.first.label;
+      }
+      final dash = info.dashMpdUrl;
+      final hls = info.hlsUrl;
+      pickUrl ??= dash ?? hls;
+      if (pickUrl == null || pickUrl.isEmpty) {
+        throw ExtractorFailure('Нет потока для этого видео');
+      }
+      final live = info.streamType == StreamType.liveStream ||
+          info.streamType == StreamType.audioLiveStream;
       return ResolvedStream(
         title: info.name ?? '',
         uploader: info.uploaderName ?? '',
-        streamUrl: url,
-        resolution: pick.resolution ?? '',
+        streamUrl: pickUrl,
+        resolution: pickRes.isNotEmpty ? pickRes : (dash != null ? 'DASH' : 'LIVE'),
         views: info.viewCount,
         duration: info.length,
+        muxed: pool,
+        dashUrl: dash,
+        hlsUrl: hls,
+        isLive: live,
       );
     } on ExtractorFailure {
       rethrow;
@@ -212,6 +273,46 @@ class ExtractorService {
       return [];
     }
   }
+
+  Future<List<Chapter>> chapters(String videoUrl) async {
+    try {
+      final segs = await VideoExtractor.getVideoSegments(videoUrl);
+      return segs
+          .map((s) => Chapter(title: s.title ?? '', start: s.startTimeSeconds))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<YtComment>> comments(String videoUrl) async {
+    try {
+      final page = await CommentsExtractor.getComments(videoUrl);
+      return _mapComments(page);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<YtComment>> moreComments() async {
+    try {
+      final page = await CommentsExtractor.getNextCommentsPage();
+      if (!page.hasNextPage && page.comments.isEmpty) return [];
+      return _mapComments(page);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  List<YtComment> _mapComments(CommentsPage page) => page.comments
+      .map((c) => YtComment(
+            author: c.author ?? '',
+            text: c.commentText ?? '',
+            likes: c.likeCount ?? 0,
+            avatar: c.uploaderAvatars.isNotEmpty ? c.uploaderAvatars.first : '',
+            replies: c.replyCount,
+          ))
+      .toList();
 
   /// Принимает UC-id, @handle, ссылку или название → возвращает id|name|url.
   Future<({String id, String name, String url})> resolveChannel(String input) async {
