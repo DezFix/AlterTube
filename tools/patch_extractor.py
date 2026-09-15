@@ -11,12 +11,12 @@ NoSuchMethodError (см. upstream PR #1458, релиза с фиксом пок�
   2. Скачивает Utils.java тега v0.26.5, меняет 3 метода на String-варианты
      (URLEncoder.encode(s, "UTF-8") и т.п. — работает с API 1).
   3. Компилирует один Utils.java через javac и подменяет Utils*.class
-     в копии jar -> app/libs/NewPipeExtractor-v0.26.5-altertube.jar.
+     в копии jar -> app/android/app/libs/NewPipeExtractor-v0.26.5-altertube.jar.
   4. app/android/app/build.gradle.kts исключает оригинальный транзитивный
      артефакт и подключает пропатченный jar (см. README ниже).
 
 Использование:
-  python tools/patch_extractor.py [--tag v0.26.5] [--out app/libs/...jar]
+  python tools/patch_extractor.py [--tag v0.26.5] [--out app/android/app/libs/...jar]
 Переменные окружения: JAVA_HOME (javac), GRADLE_USER_HOME (иначе .gradle в корне).
 """
 import argparse
@@ -146,7 +146,7 @@ def dep_classpath(home: Path) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="v0.26.5")
-    ap.add_argument("--out", default=str(ROOT / "app" / "libs" / "NewPipeExtractor-v0.26.5-altertube.jar"))
+    ap.add_argument("--out", default=str(ROOT / "app" / "android" / "app" / "libs" / "NewPipeExtractor-v0.26.5-altertube.jar"))
     a = ap.parse_args()
 
     base_dir = ROOT / ".tools" / "npe-base"  # кэш скачанного оригинала (в .gitignore)
