@@ -45,13 +45,20 @@ python tools/build.py backend
 python tools/build.py takeout --in subscriptions.json --out app_subs.json
 ```
 
-## Что работает в alpha 0.1.0
-- 3 таба + поиск-заглушка, Material3 светлая/темная
-- Видео-лента (mock), Shorts PageView вертикальный, Подписки локально
-- Плеер `video_player` + SponsorBlock auto-skip с тумблером
+## Что работает в beta 0.2.0
+- 3 таба + живой поиск, меню ⋮ → Настройки (тема, регион, SponsorBlock, backend)
+- Видео-лента (тренды), Shorts PageView, Подписки (добавление по ссылке, лента)
+- Плеер на прямых потоках + SponsorBlock auto-skip + похожие видео
 - Flask `/sb/skipSegments` с кэшем, `/health`
 
-## Следующее (alpha2)
-- Подключить реальный `newpipeextractor_dart` в `extractor_service.dart:11`
+## Известный фикс: краш на Android <13
+NewPipeExtractor v0.26.5 вызывает `URLEncoder.encode(String, Charset)` (есть только с API 33).
+Upstream-фикс (PR #1458) в релизах отсутствует, поэтому:
+- `tools/patch_extractor.py` собирает `app/libs/NewPipeExtractor-v0.26.5-altertube.jar`
+  (3 метода переписаны на API-1 варианты, происхождение задокументировано в скрипте),
+- `app/android/app/build.gradle.kts` исключает оригинальный транзитивный артефакт.
+При обновлении экстрактора: обновить тег в скрипте, пересобрать jar, закоммитить.
+
+## Следующее
 - ExoPlayer/media3, фон, загрузки, группы подписок, ReturnDislike
 - Автообновление экстрактора при поломках YouTube

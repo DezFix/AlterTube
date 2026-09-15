@@ -4,8 +4,10 @@ build/
 .flutter-plugins*
 .pub-cache/
 app/build/
+dist/
 .gradle/
 .pub-cache/
+.tools/
 
 # Crash / heap dumps
 hs_err_pid*.log

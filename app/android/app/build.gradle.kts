@@ -53,4 +53,11 @@ flutter {
 dependencies {
     // Нужно для NewPipe Extractor (core-library desugaring)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // Пропатченный NewPipeExtractor (фикс краша на Android <13, см. tools/patch_extractor.py)
+    implementation(files("libs/NewPipeExtractor-v0.26.5-altertube.jar"))
+}
+
+// Оригинал из newpipeextractor_dart исключаем, чтобы не было дублей классов.
+configurations.all {
+    exclude(group = "com.github.teamnewpipe", module = "NewPipeExtractor")
 }
