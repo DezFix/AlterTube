@@ -296,6 +296,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               : const Text('Показать комментарии'),
                         ),
                       ),
+                    if (commentsDone && comments.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: Text('Комментарии недоступны',
+                            style: TextStyle(color: Colors.grey)),
+                      ),
                     const Divider(),
                     ...related.map(
                       (v) => ListTile(

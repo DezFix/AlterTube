@@ -189,20 +189,37 @@ class ExtractorService {
     }
   }
 
-  /// Лента Shorts: поиск #shorts, только isShort.
+  /// Лента Shorts: несколько стратегий по порядку, первая непустая побеждает.
+  /// 1) киоск Shorts (если есть), 2) поиск + isShort, 3) поиск + длительность <=65с.
   Future<List<VideoItem>> shortsFeed() async {
     try {
-      var page = await SearchExtractor.searchYoutube('#shorts', [SearchFilter.videos.value]);
-      var items = _map(page.result.videos).where((v) => v.isShort).toList();
-      if (items.isEmpty) {
-        page = await SearchExtractor.searchYoutube('shorts', [SearchFilter.videos.value]);
-        items = _map(page.result.videos).where((v) => v.isShort).toList();
+      // 1) киоски
+      try {
+        final kiosks = await TrendingExtractor.listKiosks();
+        for (final k in kiosks) {
+          if (k.toLowerCase().contains('short')) {
+            final page = await TrendingExtractor.getKioskContent(k);
+            final items = _map(page.items).where((v) => v.isShort || _likelyShort(v)).toList();
+            if (items.isNotEmpty) return items;
+          }
+        }
+      } catch (_) {}
+      // 2) поиск с флагом isShort
+      for (final q in ['#shorts', 'shorts']) {
+        final page = await SearchExtractor.searchYoutube(q, [SearchFilter.videos.value]);
+        final items = _map(page.result.videos).where((v) => v.isShort).toList();
+        if (items.isNotEmpty) return items;
+        // 3) тот же поиск, но эвристика по длительности
+        final approx = _map(page.result.videos).where(_likelyShort).toList();
+        if (approx.isNotEmpty) return approx;
       }
-      return items;
+      return [];
     } catch (e) {
       throw ExtractorFailure(_msg(e));
     }
   }
+
+  bool _likelyShort(VideoItem v) => (v.duration ?? 9999) <= 65;
 
   /// Потоки для media_kit: сначала муксированный mp4, иначе DASH, иначе HLS (live).
   Future<ResolvedStream> resolveStream(String videoUrl) async {
