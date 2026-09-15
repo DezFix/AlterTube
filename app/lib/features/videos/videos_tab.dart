@@ -99,7 +99,7 @@ class _VideosTabState extends State<VideosTab> {
   String _sub(VideoItem v) {
     final parts = <String>[v.channel];
     if (v.views != null) parts.add(fmtViews(v.views));
-    if (v.date.isNotEmpty) parts.add(v.date);
+    if (v.date.isNotEmpty) parts.add(fmtDate(v.date));
     return parts.join(' • ');
   }
 

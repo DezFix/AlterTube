@@ -134,6 +134,34 @@ String fmtViews(int? v) {
   return '$v';
 }
 
+/// "2026-09-15T01:30:10+00:00" -> "5 мин назад", "вчера", "12.09.2026".
+/// Нераспознанное возвращает как есть.
+String fmtDate(String raw) {
+  if (raw.isEmpty) return '';
+  final dt = DateTime.tryParse(raw);
+  if (dt == null) return raw;
+  final diff = DateTime.now().difference(dt.toLocal());
+  if (diff.isNegative || diff.inSeconds < 30) return 'только что';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} ${_plural(diff.inMinutes, 'минуту', 'минуты', 'минут')} назад';
+  if (diff.inHours < 24) {
+    return '${diff.inHours} ${_plural(diff.inHours, 'час', 'часа', 'часов')} назад';
+  }
+  if (diff.inDays == 1) return 'вчера';
+  if (diff.inDays < 7) {
+    return '${diff.inDays} ${_plural(diff.inDays, 'день', 'дня', 'дней')} назад';
+  }
+  final l = dt.toLocal();
+  return '${l.day.toString().padLeft(2, '0')}.${l.month.toString().padLeft(2, '0')}.${l.year}';
+}
+
+String _plural(int n, String one, String few, String many) {
+  final m10 = n % 10;
+  final m100 = n % 100;
+  if (m10 == 1 && m100 != 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
 class ExtractorService {
   List<VideoItem> _map(List<StreamInfoItem> items) => items
       .map((e) {

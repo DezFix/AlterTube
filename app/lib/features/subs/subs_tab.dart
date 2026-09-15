@@ -186,7 +186,7 @@ class _SubsTabState extends State<SubsTab> {
           child: subs.isEmpty
               ? const Center(
                   child: Text(
-                      'Нет подписок.\nНажми «+ Добавить» или вставь Takeout-JSON.\nОтписка — долгим нажатием на аватар.'))
+                      'Нет подписок.\nНажми «+ Добавить»: ссылка, название или вставка\n(NewPipe / Takeout / CSV — см. docs/IMPORT.md).\nОтписка — долгим нажатием на аватар.'))
               : feedLoading
                   ? const Center(child: CircularProgressIndicator())
                   : feed.isEmpty
@@ -207,7 +207,7 @@ class _SubsTabState extends State<SubsTab> {
                                 title: Text(v.title,
                                     maxLines: 2, overflow: TextOverflow.ellipsis),
                                 subtitle: Text(
-                                    '${v.channel}${v.views != null ? ' • ${fmtViews(v.views)}' : ''}${v.date.isNotEmpty ? ' • ${v.date}' : ''}'),
+                                    '${v.channel}${v.views != null ? ' • ${fmtViews(v.views)}' : ''}${v.date.isNotEmpty ? ' • ${fmtDate(v.date)}' : ''}'),
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(

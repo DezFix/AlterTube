@@ -61,7 +61,7 @@ class TubeSearch extends SearchDelegate<VideoItem?> {
               leading: _thumb(v.thumb),
               title: Text(v.title, maxLines: 2, overflow: TextOverflow.ellipsis),
               subtitle: Text(
-                  '${v.channel}${v.views != null ? ' • ${fmtViews(v.views)}' : ''}${v.date.isNotEmpty ? ' • ${v.date}' : ''}'),
+                  '${v.channel}${v.views != null ? ' • ${fmtViews(v.views)}' : ''}${v.date.isNotEmpty ? ' • ${fmtDate(v.date)}' : ''}'),
               trailing: v.isShort ? const Icon(Icons.bolt, size: 16) : null,
               onTap: () {
                 close(context, v);
