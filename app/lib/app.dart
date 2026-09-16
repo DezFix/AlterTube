@@ -3,9 +3,6 @@ import 'package:provider/provider.dart';
 import 'core/settings/app_settings.dart';
 import 'core/theme/app_theme.dart';
 import 'features/videos/videos_tab.dart';
-import 'features/shorts/shorts_tab.dart';
-import 'features/subs/subs_tab.dart';
-import 'features/library/library_tab.dart';
 import 'features/search/tube_search.dart';
 import 'features/settings/settings_screen.dart';
 import 'core/extractor/extractor_service.dart';
@@ -26,6 +23,8 @@ class AlterTubeApp extends StatelessWidget {
   }
 }
 
+// Пока один экран: смотрим видео. Остальное (Shorts/подписки/библиотека)
+// вырезано и будет возвращаться по одной функции.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
   @override
@@ -33,8 +32,6 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  int index = 0;
-
   @override
   void initState() {
     super.initState();
@@ -52,7 +49,8 @@ class _HomeShellState extends State<HomeShell> {
           IconButton(
             icon: const Icon(Icons.search),
             tooltip: 'Поиск',
-            onPressed: () => showSearch(context: context, delegate: TubeSearch()),
+            onPressed: () =>
+                showSearch(context: context, delegate: TubeSearch()),
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -61,14 +59,16 @@ class _HomeShellState extends State<HomeShell> {
               if (v == 'settings') {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  MaterialPageRoute(
+                      builder: (_) => const SettingsScreen()),
                 );
               } else if (v == 'about') {
                 showAboutDialog(
                   context: context,
                   applicationName: 'AlterTube',
                   applicationVersion: '0.4.0 beta',
-                  applicationLegalese: 'GPL-3.0. Форк-подход: NewPipe/PipePipe + SponsorBlock.',
+                  applicationLegalese:
+                      'GPL-3.0. Форк-подход: NewPipe/PipePipe + SponsorBlock.',
                 );
               }
             },
@@ -79,30 +79,7 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: index,
-        children: const [VideosTab(), ShortsTab(), SubsTab(), LibraryTab()],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) => setState(() => index = i),
-        destinations: const [
-          NavigationDestination(
-              icon: Icon(Icons.play_arrow_outlined),
-              selectedIcon: Icon(Icons.play_arrow),
-              label: 'Видео'),
-          NavigationDestination(
-              icon: Icon(Icons.bolt_outlined), selectedIcon: Icon(Icons.bolt), label: 'Shorts'),
-          NavigationDestination(
-              icon: Icon(Icons.subscriptions_outlined),
-              selectedIcon: Icon(Icons.subscriptions),
-              label: 'Подписки'),
-          NavigationDestination(
-              icon: Icon(Icons.video_library_outlined),
-              selectedIcon: Icon(Icons.video_library),
-              label: 'Библиотека'),
-        ],
-      ),
+      body: const VideosTab(),
     );
   }
 }

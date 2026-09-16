@@ -63,7 +63,10 @@ class ResolvedStream {
   final String streamUrl;
   final String resolution;
   final int? views;
+  final int? likes;
   final int? duration;
+  final String description;
+  final String uploadDate;
   final List<StreamOption> muxed;
   final String? dashUrl;
   final String? hlsUrl;
@@ -76,7 +79,10 @@ class ResolvedStream {
     required this.resolution,
     required this.muxed,
     this.views,
+    this.likes,
     this.duration,
+    this.description = '',
+    this.uploadDate = '',
     this.dashUrl,
     this.hlsUrl,
     this.isLive = false,
@@ -300,7 +306,10 @@ class ExtractorService {
         streamUrl: pickUrl,
         resolution: pickRes.isNotEmpty ? pickRes : (dash != null ? 'DASH' : 'LIVE'),
         views: info.viewCount,
+        likes: info.likeCount,
         duration: info.length,
+        description: info.description ?? '',
+        uploadDate: info.uploadDate ?? '',
         muxed: pool,
         dashUrl: dash,
         hlsUrl: hls,

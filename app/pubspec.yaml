@@ -15,9 +15,11 @@ dependencies:
   http: ^1.2.0
   shared_preferences: ^2.2.0
   provider: ^6.1.0
-  media_kit: ^1.2.6
-  media_kit_video: ^2.0.1
-  media_kit_libs_video: ^1.0.7
+  # Готовый плеер (ExoPlayer): фулскрин/поворот, скорость, качество
+  better_player_plus: ^1.4.1
+  # Поделиться видео + открыть ссылки из описания
+  share_plus: ^13.3.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_lints: ^3.0.0
