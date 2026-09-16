@@ -60,19 +60,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
     try {
       final r = await ExtractorService().resolveStream(widget.videoUrl);
       if (!mounted) return;
-      // ВАЖНО: нативка better_player падает (IndexOutOfBounds), если в
-      // resolutions ровно 1 вариант (лайвы/HLS). Один URL — отдаём без карты.
-      final resMap = _resolutions(r);
-      final ds = resMap.length > 1
-          ? BetterPlayerDataSource(
-              BetterPlayerDataSourceType.network,
-              r.streamUrl,
-              resolutions: resMap,
-            )
-          : BetterPlayerDataSource(
-              BetterPlayerDataSourceType.network,
-              r.streamUrl,
-            );
+      // ВАЖНО: у URL YouTube нет расширения файла, а нативка better_player
+      // при formatHint==null гадает формат по расширению и падает
+      // (IndexOutOfBounds). Поэтому формат указываем явно.
+      final isHls = r.isLive || r.streamUrl.contains('m3u8');
+      final format = isHls
+          ? BetterPlayerVideoFormat.hls
+          : (r.resolution == 'DASH'
+              ? BetterPlayerVideoFormat.dash
+              : BetterPlayerVideoFormat.other);
+      final ds = BetterPlayerDataSource(
+        BetterPlayerDataSourceType.network,
+        r.streamUrl,
+        resolutions: _resolutions(r),
+        videoFormat: format,
+      );
       final ctl = BetterPlayerController(
         const BetterPlayerConfiguration(
           autoPlay: true,
