@@ -28,6 +28,7 @@ class PlayerScreen extends StatefulWidget {
 
 class _PlayerScreenState extends State<PlayerScreen> {
   BetterPlayerController? _bp;
+  BetterPlayerDataSource? _lastDs;
   SponsorBlockService sb = SponsorBlockService();
   ResolvedStream? res;
   List<SbSegment> segs = [];
@@ -36,6 +37,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   List<YtComment> comments = [];
   Timer? _sbTimer;
   String? error;
+  String? videoFailed;
   String info = '';
   bool loading = true;
   bool commentsLoading = false;
@@ -43,11 +45,55 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool descOpen = false;
   bool isSub = false;
   bool subBusy = false;
+  final List<TapGestureRecognizer> _recogs = [];
+  String _builtDesc = '';
+  List<InlineSpan> _descCache = const [];
 
   @override
   void initState() {
     super.initState();
     _init();
+  }
+
+  BetterPlayerConfiguration _bpConfig() =>
+      const BetterPlayerConfiguration(
+        autoPlay: true,
+        aspectRatio: 16 / 9,
+        allowedScreenSleep: false,
+        handleLifecycle: true,
+        fullScreenByDefault: false,
+        deviceOrientationsOnFullScreen: [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ],
+        deviceOrientationsAfterFullScreen: [
+          DeviceOrientation.portraitUp,
+        ],
+      );
+
+  /// Ошибки самого видео (битый поток, 403) показываем человеческим
+  /// баннером с повтором, а не вечным спиннером.
+  void _onBpEvent(BetterPlayerEvent e) {
+    if (e.betterPlayerEventType == BetterPlayerEventType.exception &&
+        mounted &&
+        videoFailed == null) {
+      setState(() => videoFailed =
+          'Видео не загрузилось (источник отдал ошибку). Проверь сеть — или это прямой эфир с ограничениями.');
+    }
+  }
+
+  Future<void> _retryVideo() async {
+    final ds = _lastDs;
+    if (ds == null) return;
+    _bp?.removeEventsListener(_onBpEvent);
+    _bp?.dispose();
+    final ctl =
+        BetterPlayerController(_bpConfig(), betterPlayerDataSource: ds);
+    ctl.addEventsListener(_onBpEvent);
+    setState(() {
+      _bp = ctl;
+      videoFailed = null;
+    });
   }
 
   Future<void> _init() async {
@@ -75,26 +121,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
         resolutions: _resolutions(r),
         videoFormat: format,
       );
-      final ctl = BetterPlayerController(
-        const BetterPlayerConfiguration(
-          autoPlay: true,
-          aspectRatio: 16 / 9,
-          allowedScreenSleep: false,
-          handleLifecycle: true,
-          fullScreenByDefault: false,
-          deviceOrientationsOnFullScreen: [
-            DeviceOrientation.landscapeLeft,
-            DeviceOrientation.landscapeRight,
-          ],
-          deviceOrientationsAfterFullScreen: [
-            DeviceOrientation.portraitUp,
-          ],
-        ),
-        betterPlayerDataSource: ds,
-      );
+      final ctl =
+          BetterPlayerController(_bpConfig(), betterPlayerDataSource: ds);
+      ctl.addEventsListener(_onBpEvent);
       setState(() {
         res = r;
         _bp = ctl;
+        _lastDs = ds;
         info =
             '${r.uploader}${r.views != null ? ' • ${fmtViews(r.views)}' : ''}${r.likes != null && r.likes! > 0 ? ' • ♥ ${fmtViews(r.likes)}' : ''}';
         loading = false;
@@ -266,8 +299,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     _sbTimer?.cancel();
+    _bp?.removeEventsListener(_onBpEvent);
     _bp?.dispose();
+    _clearRecogs();
     super.dispose();
+  }
+
+  void _clearRecogs() {
+    for (final r in _recogs) {
+      r.dispose();
+    }
+    _recogs.clear();
   }
 
   @override
@@ -287,8 +329,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     _init();
                   },
                 )
-              : ListView(
+              : Column(
                   children: [
+                    // Плеер зафиксирован сверху и не участвует в скролле:
+                    // платформенное видео в скроллящемся списке ломается.
                     AspectRatio(
                       aspectRatio: 16 / 9,
                       child: Container(
@@ -299,6 +343,31 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             : BetterPlayer(controller: _bp!),
                       ),
                     ),
+                    if (videoFailed != null)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .errorContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(videoFailed!)),
+                            const SizedBox(width: 8),
+                            FilledButton(
+                              onPressed: _retryVideo,
+                              child: const Text('Повторить'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Expanded(
+                      child: ListView(
+                        children: [
                     Padding(
                       padding:
                           const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -502,6 +571,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ),
                       ),
                     ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
     );
@@ -509,8 +581,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   /// Описание -> спаны: обычный текст + кликабельные ссылки
   /// (тап открывает меню «Открыть / Копировать»).
+  /// Recognizer'ы кэшируем и dispose'им сами: созданные в build и брошенные
+  /// recognizer'ы роняют приложение красным экраном.
   List<InlineSpan> _descSpans(BuildContext context) {
     final text = res?.description ?? '';
+    // Спаны строим один раз на текст и переиспользуем: recognizer'ы живут
+    // в _recogs и dispose'ятся в dispose(). Создавать их в каждом build
+    // и бросать нельзя — будет красный экран.
+    if (text != _builtDesc) {
+      _clearRecogs();
+      _descCache = _buildSpans(context, text);
+      _builtDesc = text;
+    }
+    return _descCache;
+  }
+
+  List<InlineSpan> _buildSpans(BuildContext context, String text) {
     final linkColor = Theme.of(context).colorScheme.primary;
     final re =
         RegExp(r'(https?://\S+|www\.\S+)', caseSensitive: false);
@@ -521,11 +607,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
         out.add(TextSpan(text: text.substring(last, m.start)));
       }
       final url = m.group(0)!;
+      final rec = TapGestureRecognizer()..onTap = () => _linkMenu(url);
+      _recogs.add(rec);
       out.add(TextSpan(
         text: url,
         style: TextStyle(color: linkColor),
-        recognizer: TapGestureRecognizer()
-          ..onTap = () => _linkMenu(url),
+        recognizer: rec,
       ));
       last = m.end;
     }

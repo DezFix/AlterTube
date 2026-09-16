@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'core/settings/app_settings.dart';
 import 'core/theme/app_theme.dart';
 import 'features/videos/videos_tab.dart';
+import 'features/shorts/shorts_tab.dart';
 import 'features/search/tube_search.dart';
 import 'features/settings/settings_screen.dart';
 import 'core/extractor/extractor_service.dart';
@@ -23,8 +24,7 @@ class AlterTubeApp extends StatelessWidget {
   }
 }
 
-// Пока один экран: смотрим видео. Остальное (Shorts/подписки/библиотека)
-// вырезано и будет возвращаться по одной функции.
+// Два экрана: видео и Shorts. Остальное вернётся по одной функции.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
   @override
@@ -32,6 +32,8 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
+  int index = 0;
+
   @override
   void initState() {
     super.initState();
@@ -79,7 +81,24 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ],
       ),
-      body: const VideosTab(),
+      body: IndexedStack(
+        index: index,
+        children: const [VideosTab(), ShortsTab()],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (i) => setState(() => index = i),
+        destinations: const [
+          NavigationDestination(
+              icon: Icon(Icons.play_arrow_outlined),
+              selectedIcon: Icon(Icons.play_arrow),
+              label: 'Видео'),
+          NavigationDestination(
+              icon: Icon(Icons.bolt_outlined),
+              selectedIcon: Icon(Icons.bolt),
+              label: 'Shorts'),
+        ],
+      ),
     );
   }
 }

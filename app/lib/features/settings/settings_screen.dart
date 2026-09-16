@@ -54,13 +54,21 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
           ),
-          const _Header('Лента'),
+          const _Header('Лента и Shorts'),
           SwitchListTile(
             title: const Text('Лента под подписки'),
             subtitle: const Text('Видео подстраиваются под подписки и просмотры'),
             value: s.personalizedFeed,
             onChanged: (v) =>
                 context.read<AppSettings>().setPersonalizedFeed(v),
+          ),
+          SwitchListTile(
+            title: const Text('Автопрокрутка Shorts'),
+            subtitle:
+                const Text('Следующий шортс включается сам по завершению'),
+            value: s.shortsAutoplay,
+            onChanged: (v) =>
+                context.read<AppSettings>().setShortsAutoplay(v),
           ),
           const _Header('SponsorBlock'),
           SwitchListTile(
