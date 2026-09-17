@@ -20,8 +20,8 @@ dependencies:
   # Поделиться видео + открыть ссылки из описания
   share_plus: ^13.3.0
   url_launcher: ^6.3.2
-  # Запрос доступов на Welcome-экране
-  permission_handler: ^13.0.2
+  # Запрос доступов на Welcome-экране (13.x требует compileSdk 37, у нас 36)
+  permission_handler: ^12.0.3
   # Выбор файла подписок / сохранение бэкапа (SAF, без разрешений)
   file_picker: ^13.1.0
 
