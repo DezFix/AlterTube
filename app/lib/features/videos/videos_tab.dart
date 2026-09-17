@@ -6,8 +6,8 @@ import '../../core/history/history_repository.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/subs/subscriptions_repository.dart';
 import '../../core/widgets/app_states.dart';
+import '../../core/widgets/player_route.dart';
 import '../../core/widgets/video_card.dart';
-import '../player/player_screen.dart';
 
 // Лента Видео v1: плотные карточки YouTube-стиля, фильтр-чипы,
 // скелетон при загрузке, человеческие ошибки, FAB «наверх».
@@ -134,11 +134,7 @@ class _VideosTabState extends State<VideosTab> {
   }
 
   Future<void> _open(VideoItem v) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-          builder: (_) => PlayerScreen(videoUrl: v.url, title: v.title)),
-    );
+    await pushPlayer(context, videoUrl: v.url, title: v.title);
     seen = await histRepo.recentIds();
     if (mounted) setState(() {});
   }

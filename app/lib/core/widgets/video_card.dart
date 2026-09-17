@@ -5,7 +5,10 @@ import 'channel_avatar.dart';
 // Плотная карточка видео в стиле YouTube: превью на всю ширину,
 // бейдж длительности, аватар + название + канал • просмотры • дата.
 // Просмотренное — тонкий прогресс + приглушённый заголовок вместо галочки.
+// Первое появление — мягкий fade+подъём (один раз на видео, дальше без анимаций).
 class VideoCard extends StatelessWidget {
+  static final Set<String> _shown = {};
+
   final VideoItem video;
   final bool watched;
   final VoidCallback onTap;
@@ -26,7 +29,9 @@ class VideoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
+    if (_shown.length > 500) _shown.clear();
+    final fresh = _shown.add(video.id);
+    final card = InkWell(
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,6 +106,19 @@ class VideoCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+    if (!fresh) return card;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 280),
+      builder: (_, v, child) => Opacity(
+        opacity: v,
+        child: Transform.translate(
+          offset: Offset(0, 14 * (1 - v)),
+          child: child,
+        ),
+      ),
+      child: card,
     );
   }
 }

@@ -18,6 +18,7 @@ class AppSettings extends ChangeNotifier {
 
   ThemeMode themeMode = ThemeMode.system;
   bool amoled = false; // true = чисто чёрный фон в тёмной теме
+  bool welcomeDone = false; // true = Welcome уже показывали
   bool sbEnabled = true;
   Set<String> sbCategories = {'sponsor', 'selfpromo', 'intro', 'outro', 'interaction'};
   String backendUrl = ''; // напр. http://192.168.1.5:5000 — иначе напрямую к sponsor.ajay.app
@@ -29,6 +30,7 @@ class AppSettings extends ChangeNotifier {
     final p = await SharedPreferences.getInstance();
     themeMode = ThemeMode.values[p.getInt('themeMode') ?? ThemeMode.system.index];
     amoled = p.getBool('amoled') ?? false;
+    welcomeDone = p.getBool('welcomeDone') ?? false;
     sbEnabled = p.getBool('sbEnabled') ?? true;
     sbCategories = (p.getStringList('sbCategories') ?? sbCategories.toList()).toSet();
     backendUrl = p.getString('backendUrl') ?? '';
@@ -42,6 +44,7 @@ class AppSettings extends ChangeNotifier {
     final p = await SharedPreferences.getInstance();
     await p.setInt('themeMode', themeMode.index);
     await p.setBool('amoled', amoled);
+    await p.setBool('welcomeDone', welcomeDone);
     await p.setBool('sbEnabled', sbEnabled);
     await p.setStringList('sbCategories', sbCategories.toList());
     await p.setString('backendUrl', backendUrl);
@@ -58,6 +61,12 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setAmoled(bool v) async {
     amoled = v;
+    notifyListeners();
+    await _save();
+  }
+
+  Future<void> setWelcomeDone() async {
+    welcomeDone = true;
     notifyListeners();
     await _save();
   }
@@ -105,6 +114,7 @@ class AppSettings extends ChangeNotifier {
   Future<void> resetAll() async {
     themeMode = ThemeMode.system;
     amoled = false;
+    welcomeDone = false;
     sbEnabled = true;
     sbCategories = {'sponsor', 'selfpromo', 'intro', 'outro', 'interaction'};
     backendUrl = '';

@@ -4,6 +4,8 @@ import 'core/settings/app_settings.dart';
 import 'core/theme/app_theme.dart';
 import 'features/videos/videos_tab.dart';
 import 'features/shorts/shorts_tab.dart';
+import 'features/subs/subs_tab.dart';
+import 'features/welcome/welcome_screen.dart';
 import 'features/search/tube_search.dart';
 import 'features/settings/settings_screen.dart';
 import 'core/extractor/extractor_service.dart';
@@ -19,12 +21,23 @@ class AlterTubeApp extends StatelessWidget {
       themeMode: theme.themeMode,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(amoled: theme.amoled),
-      home: const HomeShell(),
+      home: const _Root(),
     );
   }
 }
 
-// Два экрана: видео и Shorts. Остальное вернётся по одной функции.
+/// Первый запуск — Welcome, дальше сразу контент.
+class _Root extends StatelessWidget {
+  const _Root();
+
+  @override
+  Widget build(BuildContext context) {
+    final done = context.watch<AppSettings>().welcomeDone;
+    return done ? const HomeShell() : const WelcomeScreen();
+  }
+}
+
+// Три экрана: видео, Shorts, подписки. Остальное вернётся по одной функции.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
   @override
@@ -83,7 +96,7 @@ class _HomeShellState extends State<HomeShell> {
       ),
       body: IndexedStack(
         index: index,
-        children: const [VideosTab(), ShortsTab()],
+        children: const [VideosTab(), ShortsTab(), SubsTab()],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
@@ -97,6 +110,10 @@ class _HomeShellState extends State<HomeShell> {
               icon: Icon(Icons.bolt_outlined),
               selectedIcon: Icon(Icons.bolt),
               label: 'Shorts'),
+          NavigationDestination(
+              icon: Icon(Icons.subscriptions_outlined),
+              selectedIcon: Icon(Icons.subscriptions),
+              label: 'Подписки'),
         ],
       ),
     );

@@ -6,7 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/extractor/extractor_service.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/app_states.dart';
-import '../player/player_screen.dart';
+import '../../core/widgets/player_route.dart';
 
 // Shorts: вертикальный слайдер как в TikTok.
 // Один общий плеер на всех страницах: при свайпе подменяем источник —
@@ -18,7 +18,8 @@ class ShortsTab extends StatefulWidget {
   State<ShortsTab> createState() => _ShortsTabState();
 }
 
-class _ShortsTabState extends State<ShortsTab> {
+class _ShortsTabState extends State<ShortsTab>
+    with WidgetsBindingObserver {
   final ext = ExtractorService();
   final pager = PageController();
   final progress = ValueNotifier<double>(0);
@@ -26,10 +27,10 @@ class _ShortsTabState extends State<ShortsTab> {
   List<VideoItem>? items;
   String? error;
   int current = 0;
-  bool muted = false;
   bool paused = false;
   bool videoLoading = false;
   String? videoError;
+  bool _pipPending = false;
   BetterPlayerController? ctl;
   Timer? _ticker;
   int _token = 0;
@@ -37,17 +38,49 @@ class _ShortsTabState extends State<ShortsTab> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     progress.dispose();
     pager.dispose();
     ctl?.removeEventsListener(_onEvent);
     ctl?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Свернули во время просмотра — миниатюра, иначе пауза.
+    if (state == AppLifecycleState.paused) {
+      _enterPipOrPause();
+    }
+  }
+
+  Future<void> _enterPipOrPause() async {
+    final c = ctl;
+    if (c == null || paused || videoLoading || videoError != null) return;
+    _pipPending = true;
+    try {
+      final key = c.betterPlayerGlobalKey;
+      if (key == null) throw StateError('no pip key');
+      final f = c.enablePictureInPicture(key);
+      if (f != null) await f;
+    } catch (_) {
+      _pipPending = false;
+      await c.pause();
+      return;
+    }
+    await Future.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
+    if (_pipPending) {
+      _pipPending = false;
+      await ctl?.pause();
+    }
   }
 
   Future<void> _load() async {
@@ -79,6 +112,8 @@ class _ShortsTabState extends State<ShortsTab> {
         if (paused) setState(() => paused = false);
       case BetterPlayerEventType.pause:
         if (!paused) setState(() => paused = true);
+      case BetterPlayerEventType.pipStart:
+        _pipPending = false;
       case BetterPlayerEventType.exception:
         setState(() => videoError = 'Не загрузилось');
       default:
@@ -105,7 +140,7 @@ class _ShortsTabState extends State<ShortsTab> {
             looping: false,
             aspectRatio: 9 / 16,
             allowedScreenSleep: false,
-            handleLifecycle: true,
+            handleLifecycle: false, // сворачивание обрабатываем сами (PiP)
             fullScreenByDefault: false,
             controlsConfiguration: BetterPlayerControlsConfiguration(
               showControls: false,
@@ -114,7 +149,6 @@ class _ShortsTabState extends State<ShortsTab> {
           betterPlayerDataSource: _ds(r.streamUrl, r.isLive),
         );
         c.addEventsListener(_onEvent);
-        await c.setVolume(muted ? 0 : 1);
         if (!mounted || my != _token) {
           c.removeEventsListener(_onEvent);
           c.dispose();
@@ -127,7 +161,6 @@ class _ShortsTabState extends State<ShortsTab> {
         _startTicker();
       } else {
         await ctl!.setupDataSource(_ds(r.streamUrl, r.isLive));
-        await ctl!.setVolume(muted ? 0 : 1);
         if (!mounted || my != _token) return;
         setState(() => videoLoading = false);
       }
@@ -305,16 +338,6 @@ class _ShortsTabState extends State<ShortsTab> {
           child: Column(
             children: [
               IconButton.filledTonal(
-                tooltip: muted ? 'Включить звук' : 'Выключить звук',
-                icon: Icon(
-                    muted ? Icons.volume_off : Icons.volume_up),
-                onPressed: () async {
-                  setState(() => muted = !muted);
-                  await ctl?.setVolume(muted ? 0 : 1);
-                },
-              ),
-              const SizedBox(height: 8),
-              IconButton.filledTonal(
                 tooltip: 'Поделиться',
                 icon: const Icon(Icons.share_outlined),
                 onPressed: () => SharePlus.instance.share(
@@ -325,12 +348,8 @@ class _ShortsTabState extends State<ShortsTab> {
               IconButton.filledTonal(
                 tooltip: 'Открыть как видео',
                 icon: const Icon(Icons.open_in_full),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => PlayerScreen(
-                          videoUrl: v.url, title: v.title)),
-                ),
+                onPressed: () => pushPlayer(context,
+                    videoUrl: v.url, title: v.title),
               ),
             ],
           ),

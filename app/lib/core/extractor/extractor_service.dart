@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:newpipeextractor_dart/newpipeextractor_dart.dart';
 
 // Единая точка доступа к NewPipe Extractor.
@@ -404,8 +405,7 @@ class ExtractorService {
     }
   }
 
-  Future<void> applyRegion(String region) async {
-    // region: auto|RU|UA|US|DE
+  Future<void> applyRegion(String region) async {    // region: auto|RU|UA|US|DE
     try {
       switch (region) {
         case 'RU':
@@ -420,5 +420,40 @@ class ExtractorService {
           break; // auto — системная локаль устройства
       }
     } catch (_) {}
+  }
+
+  /// Импорт подписок из файла как у NewPipe: отдаём байты нативному
+  /// экстрактору, он сам разбирает JSON / CSV / ZIP Takeout.
+  /// Возвращает пары (name, url) — id вычисляет репозиторий.
+  Future<List<({String name, String url})>> importSubsFile(
+    Uint8List bytes, {
+    String contentType = '',
+  }) async {
+    try {
+      final items =
+          await SubscriptionExtractor.fromFile(0, bytes, contentType: contentType);
+      return items
+          .map((e) {
+            final url = (e.url ?? '').trim();
+            final name = (e.name?.isNotEmpty == true) ? e.name!.trim() : url;
+            return (name: name, url: url);
+          })
+          .where((e) => e.url.isNotEmpty)
+          .toList();
+    } catch (e) {
+      throw ExtractorFailure(_msg(e));
+    }
+  }
+
+  /// «Вход» без Google-формы: cookie YouTube (например, из расширения
+  /// Get cookies.txt) открывают 18+ и приватное. Хранятся нативно.
+  Future<void> setCookies(String cookies) async {
+    final c = cookies.trim();
+    if (c.isEmpty) throw ExtractorFailure('Вставь cookie строкой');
+    try {
+      await CookieExtractor.setCookie(c);
+    } catch (e) {
+      throw ExtractorFailure(_msg(e));
+    }
   }
 }

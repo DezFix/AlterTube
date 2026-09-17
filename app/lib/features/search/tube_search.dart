@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/extractor/extractor_service.dart';
 import '../../core/widgets/app_states.dart';
-import '../player/player_screen.dart';
+import '../../core/widgets/player_route.dart';
 
 // Поиск v1: история запросов + подсказки + результаты.
 // Ошибки — через AppErrorView, Shorts помечаются бейджем.
@@ -145,13 +145,7 @@ class TubeSearch extends SearchDelegate<VideoItem?> {
                   : null,
               onTap: () {
                 close(context, v);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PlayerScreen(
-                        videoUrl: v.url, title: v.title),
-                  ),
-                );
+                pushPlayer(context, videoUrl: v.url, title: v.title);
               },
             );
           },

@@ -13,6 +13,7 @@ import '../../core/settings/app_settings.dart';
 import '../../core/subs/subscriptions_repository.dart';
 import '../../core/widgets/app_states.dart';
 import '../../core/widgets/channel_avatar.dart';
+import '../../core/widgets/player_route.dart';
 
 // Экран видео: готовый плеер (пауза/плей, перемотка, скорость,
 // качество, фулскрин с поворотом) + описание со ссылками,
@@ -26,7 +27,8 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> {
+class _PlayerScreenState extends State<PlayerScreen>
+    with WidgetsBindingObserver {
   BetterPlayerController? _bp;
   BetterPlayerDataSource? _lastDs;
   SponsorBlockService sb = SponsorBlockService();
@@ -45,6 +47,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool descOpen = false;
   bool isSub = false;
   bool subBusy = false;
+  bool _playing = false;
+  bool _pipPending = false;
   final List<TapGestureRecognizer> _recogs = [];
   String _builtDesc = '';
   List<InlineSpan> _descCache = const [];
@@ -52,7 +56,40 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _init();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Свернули приложение во время просмотра — уходим в миниатюру (PiP).
+    if (state == AppLifecycleState.paused) {
+      _enterPipOrPause();
+    }
+  }
+
+  /// Пытаемся открыть PiP-миниатюру; если не вышло — ставим на паузу,
+  /// чтобы звук не играл в фоне.
+  Future<void> _enterPipOrPause() async {
+    final c = _bp;
+    if (c == null || !_playing) return;
+    _pipPending = true;
+    try {
+      final key = c.betterPlayerGlobalKey;
+      if (key == null) throw StateError('no pip key');
+      final f = c.enablePictureInPicture(key);
+      if (f != null) await f;
+    } catch (_) {
+      _pipPending = false;
+      await c.pause();
+      return;
+    }
+    await Future.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
+    if (_pipPending) {
+      _pipPending = false;
+      await _bp?.pause();
+    }
   }
 
   BetterPlayerConfiguration _bpConfig() =>
@@ -60,8 +97,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
         autoPlay: true,
         aspectRatio: 16 / 9,
         allowedScreenSleep: false,
-        handleLifecycle: true,
+        handleLifecycle: false, // жизненным циклом управляем сами (нужно для авто-PiP)
         fullScreenByDefault: false,
+        controlsConfiguration: BetterPlayerControlsConfiguration(
+          enableMute: false,
+        ),
         deviceOrientationsOnFullScreen: [
           DeviceOrientation.landscapeLeft,
           DeviceOrientation.landscapeRight,
@@ -74,11 +114,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// Ошибки самого видео (битый поток, 403) показываем человеческим
   /// баннером с повтором, а не вечным спиннером.
   void _onBpEvent(BetterPlayerEvent e) {
-    if (e.betterPlayerEventType == BetterPlayerEventType.exception &&
-        mounted &&
-        videoFailed == null) {
-      setState(() => videoFailed =
-          'Видео не загрузилось (источник отдал ошибку). Проверь сеть — или это прямой эфир с ограничениями.');
+    switch (e.betterPlayerEventType) {
+      case BetterPlayerEventType.play:
+        _playing = true;
+      case BetterPlayerEventType.pause:
+        _playing = false;
+      case BetterPlayerEventType.pipStart:
+        _pipPending = false;
+      case BetterPlayerEventType.exception:
+        if (mounted && videoFailed == null) {
+          setState(() => videoFailed =
+              'Видео не загрузилось (источник отдал ошибку). Проверь сеть — или это прямой эфир с ограничениями.');
+        }
+      default:
+        break;
     }
   }
 
@@ -298,6 +347,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _sbTimer?.cancel();
     _bp?.removeEventsListener(_onBpEvent);
     _bp?.dispose();
@@ -562,12 +612,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis),
                         subtitle: Text(v.channel),
-                        onTap: () => Navigator.pushReplacement(
+                        onTap: () => pushPlayer(
                           context,
-                          MaterialPageRoute(
-                              builder: (_) => PlayerScreen(
-                                  videoUrl: v.url,
-                                  title: v.title)),
+                          videoUrl: v.url,
+                          title: v.title,
+                          replace: true,
                         ),
                       ),
                     ),

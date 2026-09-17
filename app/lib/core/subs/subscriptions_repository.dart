@@ -189,6 +189,57 @@ class SubscriptionsRepository {
     return (await importCsv(t), 'CSV/список');
   }
 
+  /// Пакетный импорт готовых (name, url) — например, разобранных нативным
+  /// экстрактором из файла. Одна запись в prefs вместо N. Возвращает
+  /// число реально добавленных (дубли и мусор пропускаются).
+  Future<int> importItems(List<({String name, String url})> items) async {
+    final p = await SharedPreferences.getInstance();
+    final cur = (p.getStringList(_k) ?? [])
+        .map(Sub.decode)
+        .whereType<Sub>()
+        .toList();
+    final have = cur.map((e) => e.id).toSet();
+    var n = 0;
+    for (final e in items) {
+      final url = e.url.trim();
+      if (url.isEmpty) continue;
+      var id = _idFromChannelUrl(url);
+      id = id.isEmpty ? url : id;
+      if (have.contains(id)) continue;
+      final name = e.name.trim().isEmpty ? id : e.name.trim();
+      cur.add(Sub(id: id, name: name, url: url));
+      have.add(id);
+      n++;
+    }
+    await p.setStringList(_k, cur.map((e) => e.encode()).toList());
+    return n;
+  }
+
+  /// Экспорт в формате NewPipe — такой файл съедят NewPipe, PipePipe и мы.
+  Future<String> exportNewPipeJson() async {
+    final all = await load();
+    return jsonEncode({
+      'app_version': '0.4.0',
+      'app_version_int': 4,
+      'subscriptions': [
+        for (final s in all)
+          {'service_id': 0, 'url': s.channelUrl, 'name': s.name},
+      ],
+    });
+  }
+
+  static const _cookieDateKey = 'altertube_cookie_date';
+
+  Future<String?> cookieDate() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_cookieDateKey);
+  }
+
+  Future<void> setCookieDate(String v) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_cookieDateKey, v);
+  }
+
   static String _idFromChannelUrl(String url) {
     final m = RegExp(r'youtube\.com/(?:channel/|@|c/|user/)([\w@.-]+)').firstMatch(url);
     if (m != null) return m.group(1)!;
