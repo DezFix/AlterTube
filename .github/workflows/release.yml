@@ -1,0 +1,72 @@
+name: Release (signed)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name for the release (e.g. v5.3.1-altertube)'
+        required: true
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check signing secrets
+        run: |
+          for v in KEYSTORE_BASE64 KEY_STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!v}" ]; then echo "Missing secret: $v" >&2; exit 1; fi
+          done
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Restore keystore
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > /tmp/altertube-release.jks
+          echo "KEY_PATH=/tmp/altertube-release.jks" >> "$GITHUB_ENV"
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: 25
+          distribution: "temurin"
+          cache: 'gradle'
+
+      - name: Build signed release APKs
+        run: |
+          cd AlterTubeClient
+          ./gradlew assembleRelease --stacktrace -DskipFormatKtlint
+        env:
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to GitHub Release
+        run: |
+          gh release create "${{ steps.tag.outputs.name }}" \
+            --repo "${{ github.repository }}" \
+            --title "AlterTube ${{ steps.tag.outputs.name }}" \
+            --generate-notes \
+            AlterTubeClient/app/build/outputs/apk/release/*.apk
+        env:
+          GH_TOKEN: ${{ github.token }}
