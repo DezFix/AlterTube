@@ -1,1 +1,1 @@
-A FLOSS Android app to let you browse YouTube, NicoNico and BiliBili freely.
+Lightweight YouTube client: Shorts feed, music mode, no ads.

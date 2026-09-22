@@ -1,15 +1,12 @@
-NewPipe, reimagined: faster, more stable, and packed with more features.
+AlterTube — a lightweight YouTube client: TikTok-style Shorts feed, music mode, no ads.
 
-<b>Beyond NewPipe</b>
+<b>Features</b>
 
-* SponsorBlock (YouTube & BiliBili)
+* YouTube only, no ads, no trackers
+* SponsorBlock skipping
 * ReturnYouTubeDislike
-* Bullet comments / Live Chats
-* Search filters
-* Search & sort in local playlists
-* Filter out unwanted items by keywords/channels/...
-* Music player mode & Background playing
+* Background playback and music mode
 * Sleep timer
 * Fullscreen gestures
-* Login to watch restricted / premium contents
-* … and many minor improvements
+* Cookie login for restricted content
+* Full-playlist downloads
