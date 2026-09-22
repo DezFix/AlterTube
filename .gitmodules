@@ -1,8 +1,8 @@
-[submodule "PipePipeExtractor"]
-	path = PipePipeExtractor
+[submodule "AlterTubeExtractor"]
+	path = AlterTubeExtractor
 	url = https://github.com/DezFix/AlterTubeExtractor.git
 	branch = main
-[submodule "PipePipeClient"]
-	path = PipePipeClient
+[submodule "AlterTubeClient"]
+	path = AlterTubeClient
 	url = https://github.com/DezFix/AlterTubeClient.git
 	branch = main

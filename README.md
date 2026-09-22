@@ -1,65 +1,45 @@
 <hr>
 <p align="center"><img src="assets/logo.png" width="150"></p>
 <h2 align="center"><b>AlterTube</b></h2>
-<h4 align="center">
-A lightweight YouTube client: TikTok-style Shorts feed + music mode, no ads.</h4>
+<h4 align="center">A lightweight YouTube client: TikTok-style Shorts feed, music mode, no ads.</h4>
 <hr>
 
-> ⚠️ Early rebrand stage: based on PipePipe v5.4.0-beta, package `app.wre.altertube`.
-> F-Droid listing is planned but not submitted yet — install from GitHub Releases for now.
+> Status: YouTube-only rebuild in progress, package `app.wre.altertube`.
+> Install from GitHub Releases. F-Droid submission is planned.
 
-## Where we are going
+## Direction
 
-* **YouTube only** — extra services (BiliBili, NicoNico, SoundCloud, PeerTube) are being removed
+* **YouTube only** — no BiliBili, NicoNico, SoundCloud, PeerTube, Bandcamp, MediaCCC
 * **Shorts feed** — fullscreen vertical player, TikTok-style
 * **Music mode** — audio-only playback with background service
-* **Cookie login** — access to restricted content, configurable per-use ("Cookie Functions")
-* No ads, no trackers, GPL-3.0
+* **Cookie login** — restricted content, per-use control
+* No ads, no trackers, crash reports via self-hosted Bugsink
 
-## Features (inherited from PipePipe)
+## Features
 
-#### YouTube Enhancements
-* SponsorBlock skipping for sponsored segments
-* ReturnYouTubeDislike integration
-* Original (non-localized) titles
-* Login via cookie for restricted content
-
-#### Media
-* Background playback / music player mode
-* AV1 & VP9 codecs
-* Danmaku-style live chat overlay
-
-#### Filtering & Playback
-* Advanced search filters, keyword/channel filters
+* SponsorBlock skipping, ReturnYouTubeDislike, original titles
+* Background playback, AV1 and VP9, danmaku live chat overlay
+* Search filters, keyword and channel filters
 * Swipe-to-seek, fullscreen gestures, long-press speed-up, sleep timer
-* Full-playlist downloads, search & sort in playlists and history
+* Full-playlist downloads, search and sort in playlists and history
 
 ## Repositories
 
-* [AlterTube](https://github.com/DezFix/AlterTube) — this superproject
-* [AlterTubeClient](https://github.com/DezFix/AlterTubeClient) — the Android app
-* [AlterTubeExtractor](https://github.com/DezFix/AlterTubeExtractor) — the stream extractor
+* AlterTube — this superproject
+* AlterTubeClient — the Android app
+* AlterTubeExtractor — the stream extractor
 
-## Lineage / thanks
+## Thanks
 
-AlterTube stands on the shoulders of giants. Full credit to everyone before us:
+AlterTube is built on open work of others: TeamNewPipe (NewPipe, NewPipeExtractor),
+InfinityLoop1308 (PipePipe), Priveetee (SABR research), AioiLight,
+SponsorBlock and ReturnYouTubeDislike contributors.
 
-* [TeamNewPipe](https://github.com/TeamNewPipe) — [NewPipe](https://github.com/TeamNewPipe/NewPipe)
-  and [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor): the original idea,
-  protocol research and extractor architecture (GPL-3.0)
-* [InfinityLoop1308](https://github.com/InfinityLoop1308) — [PipePipe](https://github.com/InfinityLoop1308/PipePipe):
-  the hard fork we are based on (faster release cycle, SponsorBlock, RYD, SABR support)
-* [Priveetee](https://github.com/Priveetee) — SABR research and implementation
-  ([Docs-PipePipe](https://priveetee.github.io/Docs-PipePipe))
-* [AioiLight](https://github.com/AioiLight) — NicoNico service code
-* [SponsorBlock](https://sponsor.ajay.app/) — crowdsourced segment database
-* [ReturnYouTubeDislike](https://returnyoutubedislike.com/) — restored dislike counts
-
-This fork must stay under **GPL-3.0**, see `LICENSE`.
+This fork stays under GPL-3.0, see LICENSE.
 
 ## Contribute
 
-Issues and PRs are welcomed. Please note that we will **NOT** accept new service requests —
+Issues and PRs are welcome. New streaming services will not be accepted —
 AlterTube is YouTube-only by design.
 
 ## License
