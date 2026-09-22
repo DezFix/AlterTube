@@ -1,3 +1,5 @@
 /.idea
 /web
 /nightly
+# Release signing key material must never be committed (backup: GitHub secrets).
+/keystore/
