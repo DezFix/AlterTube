@@ -1,7 +1,7 @@
 <hr>
 <p align="center"><img src="assets/logo.png" width="150"></p>
 <h2 align="center"><b>AlterTube</b></h2>
-<h4 align="center">A lightweight YouTube client: TikTok-style Shorts feed, music mode, no ads.</h4>
+<h4 align="center">A lightweight YouTube client: TikTok-style Shorts feed, no ads.</h4>
 <hr>
 
 > Status: YouTube-only rebuild in progress, package `app.wre.altertube`.
@@ -11,7 +11,6 @@
 
 * **YouTube only** — no BiliBili, NicoNico, SoundCloud, PeerTube, Bandcamp, MediaCCC
 * **Shorts feed** — fullscreen vertical player, TikTok-style
-* **Music mode** — audio-only playback with background service
 * **Cookie login** — restricted content, per-use control
 * No ads, no trackers, crash reports via self-hosted Bugsink
 

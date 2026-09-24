@@ -1,11 +1,11 @@
-AlterTube — a lightweight YouTube client: TikTok-style Shorts feed, music mode, no ads.
+AlterTube — a lightweight YouTube client: TikTok-style Shorts feed, no ads.
 
 <b>Features</b>
 
 * YouTube only, no ads, no trackers
 * SponsorBlock skipping
 * ReturnYouTubeDislike
-* Background playback and music mode
+* Background playback
 * Sleep timer
 * Fullscreen gestures
 * Cookie login for restricted content

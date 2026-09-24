@@ -1,1 +1,1 @@
-Lightweight YouTube client: Shorts feed, music mode, no ads.
+Lightweight YouTube client: Shorts feed, no ads.
