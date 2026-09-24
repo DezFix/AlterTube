@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag name for the release (e.g. v5.3.1-altertube)'
+        description: 'Tag name for the release (e.g. v5.3.2-altertube)'
         required: true
 
 jobs:
